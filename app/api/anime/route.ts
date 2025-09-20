@@ -1,4 +1,4 @@
-// app/api/anime/route.ts
+// app/api/anime/route.ts (updated)
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
@@ -15,12 +15,14 @@ export async function GET(request: NextRequest) {
     if (search) apiUrl.searchParams.append('search', search)
     if (genre) apiUrl.searchParams.append('genre', genre)
     if (type) apiUrl.searchParams.append('type', type)
-    if (page) apiUrl.searchParams.append('page', page)
+    apiUrl.searchParams.append('page', page)
 
     const response = await fetch(apiUrl.toString(), {
       headers: {
         'Accept': 'application/json',
       },
+      // Add caching to reduce external API calls
+      next: { revalidate: 3600 } // Cache for 1 hour
     })
 
     if (!response.ok) {

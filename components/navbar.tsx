@@ -13,18 +13,20 @@ import {
   Sun, 
   Moon, 
   Menu,
-  Search
+  X
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
+import SearchAnime from './search-anime'
 
 export default function Navbar() {
   const pathname = usePathname()
   const { setTheme, theme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [user, setUser] = useState<any>(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const supabase = createClientComponentClient()
   const router = useRouter()
 
@@ -59,6 +61,7 @@ export default function Navbar() {
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.refresh()
+    setMobileMenuOpen(false)
   }
 
   if (!mounted) return null
@@ -94,9 +97,7 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="icon">
-              <Search className="h-4 w-4" />
-            </Button>
+            <SearchAnime />
             
             <Button
               variant="ghost"
@@ -111,7 +112,7 @@ export default function Navbar() {
             </Button>
 
             {user ? (
-              <div className="flex items-center space-x-2">
+              <div className="hidden md:flex items-center space-x-2">
                 <Button asChild variant="ghost" size="sm">
                   <Link href="/profile">
                     <User className="h-4 w-4 mr-1" />
@@ -123,7 +124,7 @@ export default function Navbar() {
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center space-x-2">
+              <div className="hidden md:flex items-center space-x-2">
                 <Button asChild variant="ghost" size="sm">
                   <Link href="/login">Masuk</Link>
                 </Button>
@@ -133,12 +134,82 @@ export default function Navbar() {
               </div>
             )}
             
-            <Button variant="ghost" size="icon" className="md:hidden">
-              <Menu className="h-5 w-5" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="md:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-40 md:hidden mt-16 bg-background/95 backdrop-blur-sm">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex flex-col space-y-4">
+              {navItems.map((item) => {
+                const Icon = item.icon
+                return (
+                  <Button
+                    key={item.name}
+                    asChild
+                    variant={pathname === item.href ? 'default' : 'ghost'}
+                    size="lg"
+                    className="justify-start"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Link href={item.href} className="flex items-center space-x-3">
+                      <Icon className="h-5 w-5" />
+                      <span>{item.name}</span>
+                    </Link>
+                  </Button>
+                )
+              })}
+              
+              <div className="border-t pt-4">
+                {user ? (
+                  <>
+                    <Button asChild variant="ghost" size="lg" className="justify-start w-full" onClick={() => setMobileMenuOpen(false)}>
+                      <Link href="/profile" className="flex items-center space-x-3">
+                        <User className="h-5 w-5" />
+                        <span>Profile</span>
+                      </Link>
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="lg" 
+                      className="justify-start w-full mt-2" 
+                      onClick={() => {
+                        setMobileMenuOpen(false)
+                        handleSignOut()
+                      }}
+                    >
+                      Keluar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button asChild variant="ghost" size="lg" className="justify-start w-full" onClick={() => setMobileMenuOpen(false)}>
+                      <Link href="/login" className="flex items-center space-x-3">
+                        <span>Masuk</span>
+                      </Link>
+                    </Button>
+                    <Button asChild size="lg" className="justify-start w-full mt-2" onClick={() => setMobileMenuOpen(false)}>
+                      <Link href="/register">
+                        <span>Daftar</span>
+                      </Link>
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   )
 }

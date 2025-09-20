@@ -2,7 +2,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['api.ryzumi.vip', 'i.ibb.co', 'your-supabase-storage-domain.supabase.co'],
+    domains: ['api.ryzumi.vip', 'i.ibb.co', 'your-supabase-storage-domain.supabase.co', 'otakudesu.best'],
   },
   experimental: {
     serverComponentsExternalPackages: ['@supabase/supabase-js'],

@@ -5,8 +5,9 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Play, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Play, ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import Link from 'next/link'
+import { getIframeUrl } from '@/lib/utils'
 
 interface EpisodeData {
   judul: string
@@ -30,6 +31,7 @@ export default function WatchEpisodePage() {
   const slug = params.slug as string
   const episode = params.episode as string
   const [episodeData, setEpisodeData] = useState<EpisodeData | null>(null)
+  const [iframeUrl, setIframeUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentEpisode, setCurrentEpisode] = useState(1)
 
@@ -40,6 +42,12 @@ export default function WatchEpisodePage() {
         const response = await fetch(`/api/anime/episode?slug=${slug}&episode=${episode}`)
         const data = await response.json()
         setEpisodeData(data)
+
+        // Get actual iframe URL
+        if (data.iframe) {
+          const actualIframeUrl = await getIframeUrl(data.iframe)
+          setIframeUrl(actualIframeUrl)
+        }
       } catch (error) {
         console.error('Error fetching episode data:', error)
       } finally {
@@ -119,9 +127,9 @@ export default function WatchEpisodePage() {
       </div>
 
       <div className="aspect-video mb-8">
-        {episodeData.iframe ? (
+        {iframeUrl ? (
           <iframe
-            src={episodeData.iframe}
+            src={iframeUrl}
             className="w-full h-full rounded-lg"
             allowFullScreen
             title={episodeData.judul}
