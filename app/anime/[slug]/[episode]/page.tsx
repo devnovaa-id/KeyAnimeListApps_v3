@@ -5,9 +5,9 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Play, ChevronLeft, ChevronRight, Download, RefreshCw, AlertCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, RefreshCw, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
-import { getIframeUrl } from '@/lib/utils'
+import { getActualIframeUrl } from '@/lib/utils'
 
 interface EpisodeData {
   judul: string
@@ -51,25 +51,11 @@ export default function WatchEpisodePage() {
         const data = await response.json()
         setEpisodeData(data)
 
-        // Coba dapatkan iframe URL dari mirror content
-        if (data.mirror) {
+        // Jika ada iframe, proses untuk mendapatkan iframe sebenarnya
+        if (data.iframe) {
           setIframeLoading(true)
-          
-          // Cari mirror yang tersedia (prioritaskan 720p atau 480p)
-          const mirrorQuality = data.mirror.m720p || data.mirror.m480p || data.mirror.m360p;
-          if (mirrorQuality && mirrorQuality.length > 0) {
-            // Ambil content dari mirror pertama
-            const content = mirrorQuality[0].content;
-            const actualIframeUrl = await getIframeUrl(content)
-            
-            if (actualIframeUrl) {
-              setIframeUrl(actualIframeUrl)
-            } else {
-              setError('Tidak dapat memuat player. Silakan coba lagi.')
-            }
-          } else {
-            setError('Tidak ada mirror yang tersedia untuk episode ini.')
-          }
+          const actualIframeUrl = await getActualIframeUrl(data.iframe)
+          setIframeUrl(actualIframeUrl)
           setIframeLoading(false)
         } else {
           setError('Player tidak tersedia untuk episode ini.')
@@ -88,24 +74,15 @@ export default function WatchEpisodePage() {
   }, [slug, episode])
 
   const retryIframe = async () => {
-    if (episodeData?.mirror) {
+    if (episodeData?.iframe) {
       setIframeLoading(true)
       setError('')
       try {
-        // Cari mirror yang tersedia (prioritaskan 720p atau 480p)
-        const mirrorQuality = episodeData.mirror.m720p || episodeData.mirror.m480p || episodeData.mirror.m360p;
-        if (mirrorQuality && mirrorQuality.length > 0) {
-          // Ambil content dari mirror pertama
-          const content = mirrorQuality[0].content;
-          const actualIframeUrl = await getIframeUrl(content)
-          
-          if (actualIframeUrl) {
-            setIframeUrl(actualIframeUrl)
-          } else {
-            setError('Tidak dapat memuat player. Silakan coba lagi.')
-          }
+        const actualIframeUrl = await getActualIframeUrl(episodeData.iframe)
+        if (actualIframeUrl) {
+          setIframeUrl(actualIframeUrl)
         } else {
-          setError('Tidak ada mirror yang tersedia untuk episode ini.')
+          setError('Tidak dapat memuat player. Silakan coba lagi.')
         }
       } catch (error) {
         console.error('Error retrying iframe:', error)

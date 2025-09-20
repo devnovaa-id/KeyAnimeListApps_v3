@@ -6,54 +6,27 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export async function getIframeUrl(content: string): Promise<string> {
+export async function getActualIframeUrl(content: string): Promise<string> {
   try {
-    console.log('Getting iframe URL for content:', content)
-    
-    // First get nonce from the API
-    const nonceResponse = await fetch('https://api.ryzumi.vip/api/otakudesu/nonce', {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-    })
-
+    // Step 1: Get nonce
+    const nonceResponse = await fetch('https://api.ryzumi.vip/api/otakudesu/nonce');
     if (!nonceResponse.ok) {
-      throw new Error(`Failed to get nonce: ${nonceResponse.status} ${nonceResponse.statusText}`)
+      throw new Error('Failed to get nonce');
     }
+    const nonceData = await nonceResponse.json();
+    const nonce = nonceData.data;
 
-    const nonceData = await nonceResponse.json()
-    console.log('Received nonce:', nonceData)
-    
-    if (!nonceData.data) {
-      throw new Error('No nonce data received from API')
-    }
-    
-    // Then get iframe URL using content and nonce
+    // Step 2: Get actual iframe URL
     const iframeResponse = await fetch(
-      `https://api.ryzumi.vip/api/otakudesu/get-iframe?content=${encodeURIComponent(content)}&nonce=${encodeURIComponent(nonceData.data)}`,
-      {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-      }
-    )
-
+      `https://api.ryzumi.vip/api/otakudesu/get-iframe?content=${encodeURIComponent(content)}&nonce=${nonce}`
+    );
     if (!iframeResponse.ok) {
-      throw new Error(`Failed to get iframe: ${iframeResponse.status} ${iframeResponse.statusText}`)
+      throw new Error('Failed to get iframe URL');
     }
-
-    const iframeData = await iframeResponse.json()
-    console.log('Received iframe data:', iframeData)
-    
-    if (!iframeData.iframe) {
-      throw new Error('No iframe URL received from API')
-    }
-    
-    return iframeData.iframe
+    const iframeData = await iframeResponse.json();
+    return iframeData.iframe;
   } catch (error) {
-    console.error('Error getting iframe URL:', error)
-    return ''
+    console.error('Error getting actual iframe URL:', error);
+    return '';
   }
 }
