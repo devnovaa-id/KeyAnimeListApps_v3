@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Build the API URL
+    // Build the API URL - perhatikan parameter yang digunakan
     const apiUrl = new URL('https://api.ryzumi.vip/api/otakudesu/anime/episode')
     apiUrl.searchParams.append('slug', slug)
     if (episode) {
@@ -33,13 +33,8 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json()
 
-    // Check if the response contains error information
-    if (data.error) {
-      return NextResponse.json(
-        { error: data.error },
-        { status: 500 }
-      )
-    }
+    // Periksa struktur respons
+    console.log('API Response:', JSON.stringify(data, null, 2))
 
     return NextResponse.json(data)
   } catch (error) {

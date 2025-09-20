@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Play, ChevronLeft, ChevronRight, Download, RefreshCw, AlertCircle } from 'lucide-react'
+import { Play, ChevronLeft, ChevronRight, Download, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
 interface EpisodeData {
@@ -30,9 +30,7 @@ export default function WatchEpisodePage() {
   const slug = params.slug as string
   const episode = params.episode as string
   const [episodeData, setEpisodeData] = useState<EpisodeData | null>(null)
-  const [iframeUrl, setIframeUrl] = useState<string>('')
   const [loading, setLoading] = useState(true)
-  const [iframeLoading, setIframeLoading] = useState(false)
   const [currentEpisode, setCurrentEpisode] = useState(1)
   const [error, setError] = useState<string>('')
 
@@ -50,24 +48,7 @@ export default function WatchEpisodePage() {
         const data = await response.json()
         setEpisodeData(data)
 
-        // Get actual iframe URL using our proxy API
-        if (data.iframe) {
-          setIframeLoading(true)
-          const iframeResponse = await fetch(`/api/iframe?content=${encodeURIComponent(data.iframe)}`)
-          
-          if (!iframeResponse.ok) {
-            throw new Error(`Failed to get iframe: ${iframeResponse.status}`)
-          }
-          
-          const iframeData = await iframeResponse.json()
-          
-          if (iframeData.iframe) {
-            setIframeUrl(iframeData.iframe)
-          } else {
-            setError('Tidak dapat memuat player. Silakan coba lagi.')
-          }
-          setIframeLoading(false)
-        } else {
+        if (!data.iframe) {
           setError('Player tidak tersedia untuk episode ini.')
         }
       } catch (error) {
@@ -82,33 +63,6 @@ export default function WatchEpisodePage() {
       fetchEpisodeData()
     }
   }, [slug, episode])
-
-  const retryIframe = async () => {
-    if (episodeData?.iframe) {
-      setIframeLoading(true)
-      setError('')
-      try {
-        const iframeResponse = await fetch(`/api/iframe?content=${encodeURIComponent(episodeData.iframe)}`)
-        
-        if (!iframeResponse.ok) {
-          throw new Error(`Failed to get iframe: ${iframeResponse.status}`)
-        }
-        
-        const iframeData = await iframeResponse.json()
-        
-        if (iframeData.iframe) {
-          setIframeUrl(iframeData.iframe)
-        } else {
-          setError('Tidak dapat memuat player. Silakan coba lagi.')
-        }
-      } catch (error) {
-        console.error('Error retrying iframe:', error)
-        setError('Terjadi kesalahan saat memuat player.')
-      } finally {
-        setIframeLoading(false)
-      }
-    }
-  }
 
   // Extract episode number from episode slug
   useEffect(() => {
@@ -177,14 +131,9 @@ export default function WatchEpisodePage() {
       </div>
 
       <div className="aspect-video mb-8 bg-black rounded-lg overflow-hidden">
-        {iframeLoading ? (
-          <div className="w-full h-full flex items-center justify-center">
-            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-            <span className="ml-2">Memuat player...</span>
-          </div>
-        ) : iframeUrl ? (
+        {episodeData.iframe ? (
           <iframe
-            src={iframeUrl}
+            src={episodeData.iframe}
             className="w-full h-full"
             allowFullScreen
             title={episodeData.judul}
@@ -197,10 +146,6 @@ export default function WatchEpisodePage() {
             <p className="text-muted-foreground mb-4">
               {error || 'Player tidak tersedia'}
             </p>
-            <Button onClick={retryIframe}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Coba Lagi
-            </Button>
           </div>
         )}
       </div>
