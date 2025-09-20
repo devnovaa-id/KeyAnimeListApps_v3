@@ -6,16 +6,22 @@ export async function GET(request: NextRequest) {
   const slug = searchParams.get('slug')
   const episode = searchParams.get('episode')
 
-  if (!slug || !episode) {
+  if (!slug) {
     return NextResponse.json(
-      { error: 'Slug and episode parameters are required' },
+      { error: 'Slug parameter is required' },
       { status: 400 }
     )
   }
 
   try {
-    const apiUrl = `https://api.ryzumi.vip/api/otakudesu/anime/episode?slug=${slug}&episode=${episode}`
-    const response = await fetch(apiUrl, {
+    // Build the API URL
+    const apiUrl = new URL('https://api.ryzumi.vip/api/otakudesu/anime/episode')
+    apiUrl.searchParams.append('slug', slug)
+    if (episode) {
+      apiUrl.searchParams.append('episode', episode)
+    }
+
+    const response = await fetch(apiUrl.toString(), {
       headers: {
         'Accept': 'application/json',
       },
