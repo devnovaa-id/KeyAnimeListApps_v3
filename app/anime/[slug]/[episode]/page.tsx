@@ -5,93 +5,45 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ChevronLeft, ChevronRight, Download, RefreshCw, AlertCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import Link from 'next/link'
-import { getActualIframeUrl } from '@/lib/utils'
-
-interface EpisodeData {
-  judul: string
-  iframe: string
-  mirror: {
-    [key: string]: Array<{
-      nama: string
-      content: string
-    }>
-  }
-  download: {
-    [key: string]: Array<{
-      nama: string
-      href: string
-    }>
-  }
-}
+import Player from '@/components/anime/player'
+import { apiService } from '@/lib/api'
 
 export default function WatchEpisodePage() {
   const params = useParams()
   const slug = params.slug as string
   const episode = params.episode as string
-  const [episodeData, setEpisodeData] = useState<EpisodeData | null>(null)
-  const [iframeUrl, setIframeUrl] = useState<string>('')
+  const [episodeData, setEpisodeData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [iframeLoading, setIframeLoading] = useState(false)
-  const [currentEpisode, setCurrentEpisode] = useState(1)
   const [error, setError] = useState<string>('')
+  const [currentEpisode, setCurrentEpisode] = useState(1)
 
   useEffect(() => {
     const fetchEpisodeData = async () => {
       try {
         setLoading(true)
         setError('')
-        const response = await fetch(`/api/anime/episode?slug=${slug}&episode=${episode}`)
         
-        if (!response.ok) {
-          throw new Error(`Failed to fetch episode: ${response.status}`)
+        const response = await apiService.getEpisode(slug)
+        
+        if (response.error || !response.data) {
+          throw new Error(response.error || 'Failed to fetch episode data')
         }
         
-        const data = await response.json()
-        setEpisodeData(data)
-
-        // Jika ada iframe, proses untuk mendapatkan iframe sebenarnya
-        if (data.iframe) {
-          setIframeLoading(true)
-          const actualIframeUrl = await getActualIframeUrl(data.iframe)
-          setIframeUrl(actualIframeUrl)
-          setIframeLoading(false)
-        } else {
-          setError('Player tidak tersedia untuk episode ini.')
-        }
+        setEpisodeData(response.data)
       } catch (error) {
         console.error('Error fetching episode data:', error)
-        setError('Terjadi kesalahan saat memuat episode.')
+        setError(error instanceof Error ? error.message : 'Terjadi kesalahan saat memuat episode')
       } finally {
         setLoading(false)
       }
     }
 
-    if (slug && episode) {
+    if (slug) {
       fetchEpisodeData()
     }
-  }, [slug, episode])
-
-  const retryIframe = async () => {
-    if (episodeData?.iframe) {
-      setIframeLoading(true)
-      setError('')
-      try {
-        const actualIframeUrl = await getActualIframeUrl(episodeData.iframe)
-        if (actualIframeUrl) {
-          setIframeUrl(actualIframeUrl)
-        } else {
-          setError('Tidak dapat memuat player. Silakan coba lagi.')
-        }
-      } catch (error) {
-        console.error('Error retrying iframe:', error)
-        setError('Terjadi kesalahan saat memuat player.')
-      } finally {
-        setIframeLoading(false)
-      }
-    }
-  }
+  }, [slug])
 
   // Extract episode number from episode slug
   useEffect(() => {
@@ -118,11 +70,12 @@ export default function WatchEpisodePage() {
     )
   }
 
-  if (!episodeData) {
+  if (error || !episodeData) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
-        <h1 className="text-2xl font-bold">Episode tidak ditemukan</h1>
-        <Button asChild className="mt-4">
+        <h1 className="text-2xl font-bold mb-4">Episode tidak ditemukan</h1>
+        <p className="text-muted-foreground mb-4">{error}</p>
+        <Button asChild>
           <Link href={`/anime/${slug}`}>Kembali ke Detail Anime</Link>
         </Button>
       </div>
@@ -159,43 +112,16 @@ export default function WatchEpisodePage() {
         </div>
       </div>
 
-      <div className="aspect-video mb-8 bg-black rounded-lg overflow-hidden">
-        {iframeLoading ? (
-          <div className="w-full h-full flex items-center justify-center">
-            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-            <span className="ml-2">Memuat player...</span>
-          </div>
-        ) : iframeUrl ? (
-          <iframe
-            src={iframeUrl}
-            className="w-full h-full"
-            allowFullScreen
-            title={episodeData.judul}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-center p-4">
-            <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground mb-4">
-              {error || 'Player tidak tersedia'}
-            </p>
-            <Button onClick={retryIframe}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Coba Lagi
-            </Button>
-          </div>
-        )}
-      </div>
+      <Player episodeData={episodeData} />
 
       <div className="mb-8">
         <h2 className="text-xl font-bold mb-4">Download Links</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Object.entries(episodeData.download).map(([quality, links]) => (
+          {episodeData.download && Object.entries(episodeData.download).map(([quality, links]) => (
             <div key={quality} className="border rounded-lg p-4">
               <h3 className="font-semibold mb-2">{quality.toUpperCase()}</h3>
               <div className="space-y-2">
-                {links.map((link, index) => (
+                {(links as any[]).map((link, index) => (
                   <Button
                     key={index}
                     asChild
@@ -208,26 +134,6 @@ export default function WatchEpisodePage() {
                       {link.nama}
                     </a>
                   </Button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Mirror links as alternative */}
-      <div className="mb-8">
-        <h2 className="text-xl font-bold mb-4">Mirror Links</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Object.entries(episodeData.mirror).map(([quality, mirrors]) => (
-            <div key={quality} className="border rounded-lg p-4">
-              <h3 className="font-semibold mb-2">{quality.toUpperCase()}</h3>
-              <div className="space-y-2">
-                {mirrors.map((mirror, index) => (
-                  <div key={index} className="text-sm">
-                    <p className="font-medium">{mirror.nama}</p>
-                    <p className="text-muted-foreground truncate">{mirror.content}</p>
-                  </div>
                 ))}
               </div>
             </div>
