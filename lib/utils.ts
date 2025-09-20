@@ -23,7 +23,7 @@ export async function getIframeUrl(content: string): Promise<string> {
     }
 
     const nonceData = await nonceResponse.json()
-    console.log('Nonce data:', nonceData)
+    console.log('Received nonce:', nonceData)
     
     if (!nonceData.data) {
       throw new Error('No nonce data received from API')
@@ -45,7 +45,7 @@ export async function getIframeUrl(content: string): Promise<string> {
     }
 
     const iframeData = await iframeResponse.json()
-    console.log('Iframe data:', iframeData)
+    console.log('Received iframe data:', iframeData)
     
     if (!iframeData.iframe) {
       throw new Error('No iframe URL received from API')

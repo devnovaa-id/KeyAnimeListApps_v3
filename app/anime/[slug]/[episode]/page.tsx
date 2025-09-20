@@ -5,8 +5,9 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Play, ChevronLeft, ChevronRight, Download, AlertCircle } from 'lucide-react'
+import { Play, ChevronLeft, ChevronRight, Download, RefreshCw, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import { getIframeUrl } from '@/lib/utils'
 
 interface EpisodeData {
   judul: string
@@ -30,7 +31,9 @@ export default function WatchEpisodePage() {
   const slug = params.slug as string
   const episode = params.episode as string
   const [episodeData, setEpisodeData] = useState<EpisodeData | null>(null)
+  const [iframeUrl, setIframeUrl] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [iframeLoading, setIframeLoading] = useState(false)
   const [currentEpisode, setCurrentEpisode] = useState(1)
   const [error, setError] = useState<string>('')
 
@@ -48,7 +51,27 @@ export default function WatchEpisodePage() {
         const data = await response.json()
         setEpisodeData(data)
 
-        if (!data.iframe) {
+        // Coba dapatkan iframe URL dari mirror content
+        if (data.mirror) {
+          setIframeLoading(true)
+          
+          // Cari mirror yang tersedia (prioritaskan 720p atau 480p)
+          const mirrorQuality = data.mirror.m720p || data.mirror.m480p || data.mirror.m360p;
+          if (mirrorQuality && mirrorQuality.length > 0) {
+            // Ambil content dari mirror pertama
+            const content = mirrorQuality[0].content;
+            const actualIframeUrl = await getIframeUrl(content)
+            
+            if (actualIframeUrl) {
+              setIframeUrl(actualIframeUrl)
+            } else {
+              setError('Tidak dapat memuat player. Silakan coba lagi.')
+            }
+          } else {
+            setError('Tidak ada mirror yang tersedia untuk episode ini.')
+          }
+          setIframeLoading(false)
+        } else {
           setError('Player tidak tersedia untuk episode ini.')
         }
       } catch (error) {
@@ -63,6 +86,35 @@ export default function WatchEpisodePage() {
       fetchEpisodeData()
     }
   }, [slug, episode])
+
+  const retryIframe = async () => {
+    if (episodeData?.mirror) {
+      setIframeLoading(true)
+      setError('')
+      try {
+        // Cari mirror yang tersedia (prioritaskan 720p atau 480p)
+        const mirrorQuality = episodeData.mirror.m720p || episodeData.mirror.m480p || episodeData.mirror.m360p;
+        if (mirrorQuality && mirrorQuality.length > 0) {
+          // Ambil content dari mirror pertama
+          const content = mirrorQuality[0].content;
+          const actualIframeUrl = await getIframeUrl(content)
+          
+          if (actualIframeUrl) {
+            setIframeUrl(actualIframeUrl)
+          } else {
+            setError('Tidak dapat memuat player. Silakan coba lagi.')
+          }
+        } else {
+          setError('Tidak ada mirror yang tersedia untuk episode ini.')
+        }
+      } catch (error) {
+        console.error('Error retrying iframe:', error)
+        setError('Terjadi kesalahan saat memuat player.')
+      } finally {
+        setIframeLoading(false)
+      }
+    }
+  }
 
   // Extract episode number from episode slug
   useEffect(() => {
@@ -131,9 +183,14 @@ export default function WatchEpisodePage() {
       </div>
 
       <div className="aspect-video mb-8 bg-black rounded-lg overflow-hidden">
-        {episodeData.iframe ? (
+        {iframeLoading ? (
+          <div className="w-full h-full flex items-center justify-center">
+            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            <span className="ml-2">Memuat player...</span>
+          </div>
+        ) : iframeUrl ? (
           <iframe
-            src={episodeData.iframe}
+            src={iframeUrl}
             className="w-full h-full"
             allowFullScreen
             title={episodeData.judul}
@@ -146,6 +203,10 @@ export default function WatchEpisodePage() {
             <p className="text-muted-foreground mb-4">
               {error || 'Player tidak tersedia'}
             </p>
+            <Button onClick={retryIframe}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Coba Lagi
+            </Button>
           </div>
         )}
       </div>
