@@ -1,9 +1,10 @@
-// components/anime/episode-list.tsx
+// components/anime/episode-list.tsx (perbaikan)
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Play, Download } from 'lucide-react'
+import { Play, Download, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import { useState } from 'react'
 
 interface AnimeEpisode {
   judul: string
@@ -17,6 +18,17 @@ interface EpisodeListProps {
 }
 
 export default function EpisodeList({ episodes, slug }: EpisodeListProps) {
+  const [error, setError] = useState<string>('')
+
+  if (episodes.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <AlertCircle className="h-12 w-12 mx-auto mb-4" />
+        <p>Tidak ada episode yang tersedia</p>
+      </div>
+    )
+  }
+
   return (
     <div className="grid gap-2">
       {episodes.map((episode, index) => (

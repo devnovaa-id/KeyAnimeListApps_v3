@@ -27,11 +27,19 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json()
 
+    // Check if the response contains error information
+    if (data.error) {
+      return NextResponse.json(
+        { error: data.error },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json(data)
   } catch (error) {
     console.error('Error fetching episode data:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch episode data' },
+      { error: 'Failed to fetch episode data from external API' },
       { status: 500 }
     )
   }

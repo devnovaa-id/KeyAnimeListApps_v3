@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Play, ChevronLeft, ChevronRight, Download } from 'lucide-react'
+import { Play, ChevronLeft, ChevronRight, Download, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import { getIframeUrl } from '@/lib/utils'
 
@@ -31,25 +31,43 @@ export default function WatchEpisodePage() {
   const slug = params.slug as string
   const episode = params.episode as string
   const [episodeData, setEpisodeData] = useState<EpisodeData | null>(null)
-  const [iframeUrl, setIframeUrl] = useState<string | null>(null)
+  const [iframeUrl, setIframeUrl] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [iframeLoading, setIframeLoading] = useState(false)
   const [currentEpisode, setCurrentEpisode] = useState(1)
+  const [error, setError] = useState<string>('')
 
   useEffect(() => {
     const fetchEpisodeData = async () => {
       try {
         setLoading(true)
+        setError('')
         const response = await fetch(`/api/anime/episode?slug=${slug}&episode=${episode}`)
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch episode: ${response.status}`)
+        }
+        
         const data = await response.json()
         setEpisodeData(data)
 
         // Get actual iframe URL
         if (data.iframe) {
+          setIframeLoading(true)
           const actualIframeUrl = await getIframeUrl(data.iframe)
-          setIframeUrl(actualIframeUrl)
+          
+          if (actualIframeUrl) {
+            setIframeUrl(actualIframeUrl)
+          } else {
+            setError('Tidak dapat memuat player. Silakan coba lagi.')
+          }
+          setIframeLoading(false)
+        } else {
+          setError('Player tidak tersedia untuk episode ini.')
         }
       } catch (error) {
         console.error('Error fetching episode data:', error)
+        setError('Terjadi kesalahan saat memuat episode.')
       } finally {
         setLoading(false)
       }
@@ -60,7 +78,22 @@ export default function WatchEpisodePage() {
     }
   }, [slug, episode])
 
-  // Extract episode number from episode slug (e.g., "episode-1" -> 1)
+  const retryIframe = async () => {
+    if (episodeData?.iframe) {
+      setIframeLoading(true)
+      setError('')
+      const actualIframeUrl = await getIframeUrl(episodeData.iframe)
+      
+      if (actualIframeUrl) {
+        setIframeUrl(actualIframeUrl)
+      } else {
+        setError('Tidak dapat memuat player. Silakan coba lagi.')
+      }
+      setIframeLoading(false)
+    }
+  }
+
+  // Extract episode number from episode slug
   useEffect(() => {
     if (episode) {
       const epNum = episode.match(/episode-(\d+)/i)
@@ -126,17 +159,28 @@ export default function WatchEpisodePage() {
         </div>
       </div>
 
-      <div className="aspect-video mb-8">
-        {iframeUrl ? (
+      <div className="aspect-video mb-8 bg-black rounded-lg overflow-hidden">
+        {iframeLoading ? (
+          <div className="w-full h-full flex items-center justify-center">
+            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : iframeUrl ? (
           <iframe
             src={iframeUrl}
-            className="w-full h-full rounded-lg"
+            className="w-full h-full"
             allowFullScreen
             title={episodeData.judul}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-muted rounded-lg">
-            <p className="text-muted-foreground">Player tidak tersedia</p>
+          <div className="w-full h-full flex flex-col items-center justify-center text-center p-4">
+            <p className="text-muted-foreground mb-4">
+              {error || 'Player tidak tersedia'}
+            </p>
+            <Button onClick={retryIframe}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Coba Lagi
+            </Button>
           </div>
         )}
       </div>
